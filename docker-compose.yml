@@ -1,0 +1,10 @@
+version: '2.1'
+services:
+  clickhouse:
+    image: clickhouse/clickhouse-server:22.6.3.35-alpine
+    container_name: ch-28123
+    ports:
+      - "28123:8123"
+    tmpfs:
+      - /var/lib/clickhouse
+      - /var/log/clickhouse-server
