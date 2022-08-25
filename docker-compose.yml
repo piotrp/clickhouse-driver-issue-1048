@@ -8,3 +8,14 @@ services:
     tmpfs:
       - /var/lib/clickhouse
       - /var/log/clickhouse-server
+  clickhouse-pl:
+    image: clickhouse/clickhouse-server:22.6.3.35-alpine
+    command:
+      - "--"
+      - "--timezone=Poland"
+    container_name: ch-28123-pl
+    ports:
+      - "38123:8123"
+    tmpfs:
+      - /var/lib/clickhouse
+      - /var/log/clickhouse-server

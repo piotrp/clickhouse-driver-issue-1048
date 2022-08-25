@@ -13,7 +13,8 @@ import java.util.Properties;
 import java.util.TimeZone;
 
 public class NewDriverTests {
-    private final static String URL = "jdbc:clickhouse://localhost:28123/";
+    private final static String URL_SERVER_UTC = "jdbc:clickhouse://localhost:28123/";
+    private final static String URL_SERVER_POLAND = "jdbc:clickhouse://localhost:38123/";
     private final static String USERNAME = "default";
     private final static String PASSWORD = "";
 
@@ -23,12 +24,22 @@ public class NewDriverTests {
 
     @ParameterizedTest
     @ValueSource(strings = {"Europe/Warsaw", "UTC"})
-    void testReading(String tz) throws SQLException {
-        TimeZone.setDefault(TimeZone.getTimeZone(tz));
-        var dataSource = new ClickHouseDataSource(URL);
+    void testReadingFromUtcServer(String jvmTimeZoneID) throws SQLException {
+        testReading(jvmTimeZoneID, "UTC", URL_SERVER_UTC);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"Europe/Warsaw", "UTC"})
+    void testReadingFromPolishServer(String jvmTimeZoneID) throws SQLException {
+        testReading(jvmTimeZoneID, "Poland", URL_SERVER_POLAND);
+    }
+
+    private void testReading(String jvmTimeZoneID, String serverTimeZoneID, String serverUrl) throws SQLException {
+        TimeZone.setDefault(TimeZone.getTimeZone(jvmTimeZoneID));
+        var dataSource = new ClickHouseDataSource(serverUrl);
         try (var conn = dataSource.getConnection(USERNAME, PASSWORD)) {
-            Assertions.assertEquals(TimeZone.getTimeZone(tz), conn.getJvmTimeZone());
-            Assertions.assertEquals(TimeZone.getTimeZone("UTC"), conn.getServerTimeZone());
+            Assertions.assertEquals(TimeZone.getTimeZone(jvmTimeZoneID), conn.getJvmTimeZone());
+            Assertions.assertEquals(TimeZone.getTimeZone(serverTimeZoneID), conn.getServerTimeZone());
             // bug: use_server_time_zone is ignored
             Assertions.assertEquals(Optional.empty(), conn.getEffectiveTimeZone());
 
@@ -56,16 +67,26 @@ public class NewDriverTests {
 
     @ParameterizedTest
     @ValueSource(strings = {"Europe/Warsaw", "UTC"})
-    void testReadingWithForcedUtc(String tz) throws SQLException {
-        TimeZone.setDefault(TimeZone.getTimeZone(tz));
+    void testReadingFromUtcServerWithForcedUtc(String jvmTimeZoneID) throws SQLException {
+        testReadingWithForcedUtc(jvmTimeZoneID, "UTC", URL_SERVER_UTC);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"Europe/Warsaw", "UTC"})
+    void testReadingFromPolishServerWithForcedUtc(String jvmTimeZoneID) throws SQLException {
+        testReadingWithForcedUtc(jvmTimeZoneID, "Poland", URL_SERVER_POLAND);
+    }
+
+    private void testReadingWithForcedUtc(String jvmTimeZoneID, String serverTimeZoneID, String serverUrl) throws SQLException {
+        TimeZone.setDefault(TimeZone.getTimeZone(jvmTimeZoneID));
         var props = new Properties();
-        props.setProperty("use_time_zone", tz);
+        props.setProperty("use_time_zone", jvmTimeZoneID);
         props.setProperty("use_server_time_zone", "false");
-        var dataSource = new ClickHouseDataSource(URL, props);
+        var dataSource = new ClickHouseDataSource(serverUrl, props);
         try (var conn = dataSource.getConnection(USERNAME, PASSWORD)) {
-            Assertions.assertEquals(TimeZone.getTimeZone(tz), conn.getJvmTimeZone());
-            Assertions.assertEquals(TimeZone.getTimeZone("UTC"), conn.getServerTimeZone());
-            Assertions.assertEquals(Optional.of(TimeZone.getTimeZone(tz)), conn.getEffectiveTimeZone());
+            Assertions.assertEquals(TimeZone.getTimeZone(jvmTimeZoneID), conn.getJvmTimeZone());
+            Assertions.assertEquals(TimeZone.getTimeZone(serverTimeZoneID), conn.getServerTimeZone());
+            Assertions.assertEquals(Optional.of(TimeZone.getTimeZone(jvmTimeZoneID)), conn.getEffectiveTimeZone());
 
             try (var stmt = conn.createStatement()) {
                 var rs = stmt.executeQuery(
